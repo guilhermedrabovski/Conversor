@@ -1,0 +1,18 @@
+{
+  "id": "02n53w",
+  "originalName": "amostra-video.webm",
+  "inputPath": "/app/applet/temp_uploads/amostra-02n53w.webm",
+  "targetFormat": "mp4",
+  "status": "completed",
+  "progress": 100,
+  "inputSize": 116075,
+  "createdAt": 1792676070268,
+  "options": {
+    "videoPreset": "veryfast",
+    "videoQuality": "balanced"
+  },
+  "outputPath": "/app/applet/temp_outputs/converted-02n53w.mp4",
+  "duration": 4.003,
+  "speed": "16.7x",
+  "outputSize": 44764
+}

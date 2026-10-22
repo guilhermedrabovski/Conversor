@@ -1,0 +1,6 @@
+{
+  "name": "HyperConvert Studio",
+  "description": "Conversor profissional ultrarrápido de vídeo, áudio e documentos: WEBM para MP4, PDF para JPG, OGG para MP3 e múltiplos formatos com motor FFmpeg nativo e conversão em lote.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
