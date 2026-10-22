@@ -14,7 +14,7 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 const isProd = process.env.NODE_ENV === 'production';
-const PORT = isProd ? (process.env.PORT ? parseInt(process.env.PORT, 10) : 8080) : 3000;
+const PORT = 3000; // AI Studio Nginx proxy always forwards to port 3000 in both dev and production
 
 // Working directories for temporary processing and persistent job state
 const UPLOADS_DIR = path.join(__dirname, 'temp_uploads');
@@ -807,17 +807,6 @@ async function startServer() {
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`[HyperConvert Studio] Server running on http://0.0.0.0:${PORT} (${isProd ? 'production' : 'development'})`);
   });
-
-  if (isProd && PORT !== 3000) {
-    try {
-      const fallbackServer = app.listen(3000, '0.0.0.0', () => {
-        console.log('[HyperConvert Studio] Also listening on fallback port 3000');
-      });
-      fallbackServer.on('error', () => {
-        // Fallback port already bound, ignore
-      });
-    } catch {}
-  }
 }
 
 startServer();
