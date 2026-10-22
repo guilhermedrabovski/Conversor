@@ -1,0 +1,19 @@
+{
+  "id": "yywe0p",
+  "originalName": "documento-amostra.pdf",
+  "inputPath": "/app/applet/temp_uploads/amostra-yywe0p.pdf",
+  "targetFormat": "jpg",
+  "status": "completed",
+  "progress": 100,
+  "inputSize": 1688,
+  "createdAt": 1792677301820,
+  "options": {
+    "dpi": "150"
+  },
+  "outputFiles": [
+    "/app/applet/temp_outputs/pdf-yywe0p/page-001.jpg",
+    "/app/applet/temp_outputs/pdf-yywe0p/page-002.jpg"
+  ],
+  "outputSize": 70937,
+  "outputPath": "/app/applet/temp_outputs/pdf-yywe0p/page-001.jpg"
+}
