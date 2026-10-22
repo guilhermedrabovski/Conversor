@@ -788,24 +788,56 @@ app.all('/api/*', (_req: Request, res: Response) => {
 });
 
 async function startServer() {
-  const isProd = process.env.NODE_ENV === 'production';
+  const distPath = path.join(__dirname, 'dist');
+  const hasDist = fs.existsSync(path.join(distPath, 'index.html'));
+  const isDev = process.env.npm_lifecycle_event === 'dev' || (!hasDist && process.env.NODE_ENV !== 'production');
 
-  if (!isProd) {
+  if (isDev) {
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: 'spa',
     });
     app.use(vite.middlewares);
+    console.log('[HyperConvert Studio] Running in development mode with Vite middleware');
   } else {
-    const distPath = path.join(__dirname, 'dist');
     app.use(express.static(distPath));
     app.get('*', (_req, res) => {
       res.sendFile(path.join(distPath, 'index.html'));
     });
+    console.log('[HyperConvert Studio] Running in production mode serving static dist bundle');
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`[HyperConvert Studio] Server running on http://0.0.0.0:${PORT} (${isProd ? 'production' : 'development'})`);
+  // Cloud Run supplies process.env.PORT (e.g. 8080) for production containers.
+  // In dev environments, Nginx occupies port 8080 and proxies to port 3000.
+  const targetPort = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
+
+  const server = app.listen(targetPort, '0.0.0.0', () => {
+    console.log(`[HyperConvert Studio] Server listening on primary port ${targetPort}`);
+  });
+
+  server.on('error', (err: any) => {
+    if (err.code === 'EADDRINUSE' && targetPort !== 3000) {
+      console.log(`[HyperConvert Studio] Port ${targetPort} is already bound (Nginx dev proxy). Falling back to port 3000...`);
+      app.listen(3000, '0.0.0.0', () => {
+        console.log('[HyperConvert Studio] Server listening on port 3000');
+      });
+    } else {
+      console.error('[HyperConvert Studio] Server listen error:', err);
+    }
+  });
+
+  server.on('listening', () => {
+    // If running on port other than 3000, also bind to port 3000 if free
+    if (targetPort !== 3000) {
+      try {
+        const secondary = app.listen(3000, '0.0.0.0', () => {
+          console.log('[HyperConvert Studio] Also listening on port 3000 as secondary');
+        });
+        secondary.on('error', () => {
+          // Port 3000 busy, ignore
+        });
+      } catch {}
+    }
   });
 }
 
