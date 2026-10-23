@@ -122,6 +122,102 @@ export async function convertAudioClientSide(
 }
 
 /**
+ * In-browser Video to MP4 or Audio extractor
+ */
+export async function convertVideoClientSide(
+  file: File,
+  targetFormat: string,
+  onProgress?: (percent: number) => void
+): Promise<ClientConversionResult> {
+  const target = targetFormat.toLowerCase();
+
+  // If user wants audio extraction from video
+  if (['mp3', 'wav', 'ogg', 'aac'].includes(target)) {
+    return convertAudioClientSide(file, target, onProgress);
+  }
+
+  // If converting WebM/video to MP4
+  return new Promise((resolve, reject) => {
+    const video = document.createElement('video');
+    video.src = URL.createObjectURL(file);
+    video.muted = true;
+    video.playsInline = true;
+
+    const mimeTypes = [
+      'video/mp4',
+      'video/mp4;codecs=avc1',
+      'video/mp4;codecs=avc1.42E01E,mp4a.40.2',
+    ];
+    const supportedMime = mimeTypes.find((t) => MediaRecorder.isTypeSupported(t));
+
+    if (!supportedMime) {
+      URL.revokeObjectURL(video.src);
+      return reject(new Error('Navegador não possui suporte nativo à gravação direta de MP4. Utilize o processador FFmpeg do servidor.'));
+    }
+
+    video.onloadedmetadata = () => {
+      const duration = video.duration;
+      const stream = (video as any).captureStream ? (video as any).captureStream() : (video as any).mozCaptureStream?.();
+
+      if (!stream) {
+        URL.revokeObjectURL(video.src);
+        return reject(new Error('Não foi possível capturar o stream de vídeo no navegador.'));
+      }
+
+      const recorder = new MediaRecorder(stream, {
+        mimeType: supportedMime,
+        videoBitsPerSecond: 2500000,
+      });
+
+      const chunks: Blob[] = [];
+      recorder.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) chunks.push(e.data);
+      };
+
+      recorder.onstop = () => {
+        const mp4Blob = new Blob(chunks, { type: supportedMime });
+        const baseName = file.name.replace(/\.[^/.]+$/, '');
+        const outName = `${baseName}.mp4`;
+        const url = URL.createObjectURL(mp4Blob);
+        URL.revokeObjectURL(video.src);
+        resolve({
+          outputFiles: [{ name: outName, blob: mp4Blob, url }],
+          primaryUrl: url,
+          primaryBlob: mp4Blob,
+          primaryName: outName,
+          size: mp4Blob.size,
+        });
+      };
+
+      recorder.start(100);
+      video.play().catch(reject);
+
+      video.ontimeupdate = () => {
+        if (duration > 0) {
+          const pct = Math.min(99, Math.round((video.currentTime / duration) * 100));
+          onProgress?.(pct);
+        }
+      };
+
+      video.onended = () => {
+        recorder.stop();
+        onProgress?.(100);
+      };
+
+      video.onerror = () => {
+        URL.revokeObjectURL(video.src);
+        reject(new Error('Erro ao processar stream de vídeo'));
+      };
+    };
+
+    video.onerror = () => {
+      URL.revokeObjectURL(video.src);
+      reject(new Error('Formato de vídeo inacessível no navegador'));
+    };
+  });
+}
+
+/**
  * Convert standard AudioBuffer to 16-bit PCM WAV Blob
  */
 function audioBufferToWavBlob(buffer: AudioBuffer): Blob {

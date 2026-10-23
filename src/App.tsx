@@ -13,7 +13,7 @@ import { FeatureHighlights } from './components/FeatureHighlights';
 import { HelpModal } from './components/HelpModal';
 import { ConversionJob, JobOptions } from './types/converter';
 import { getDefaultTarget, getFileExtension } from './utils/formatDetector';
-import { convertPdfClientSide, convertAudioClientSide } from './utils/clientConverter';
+import { convertPdfClientSide, convertAudioClientSide, convertVideoClientSide } from './utils/clientConverter';
 
 export default function App() {
   const [jobs, setJobs] = useState<ConversionJob[]>([]);
@@ -109,7 +109,7 @@ export default function App() {
       }
     };
 
-    const runClientSideFallback = async () => {
+    const runClientSideFallback = async (serverErrorMessage?: string) => {
       setIsUploading(false);
       for (let i = 0; i < filesArray.length; i++) {
         const file = filesArray[i];
@@ -166,6 +166,41 @@ export default function App() {
                   : j
               )
             );
+          } else if (['webm', 'mp4', 'mov', 'mkv', 'avi'].includes(ext)) {
+            try {
+              const result = await convertVideoClientSide(file, target, (pct) => {
+                setJobs((prev) =>
+                  prev.map((j) => (j.id === tempId ? { ...j, progress: pct } : j))
+                );
+              });
+
+              setJobs((prev) =>
+                prev.map((j) =>
+                  j.id === tempId
+                    ? {
+                        ...j,
+                        status: 'completed',
+                        progress: 100,
+                        outputSize: result.size,
+                        clientDownloadUrl: result.primaryUrl,
+                        clientBlob: result.primaryBlob,
+                      }
+                    : j
+                )
+              );
+            } catch (videoErr: any) {
+              setJobs((prev) =>
+                prev.map((j) =>
+                  j.id === tempId
+                    ? {
+                        ...j,
+                        status: 'error',
+                        error: serverErrorMessage || videoErr.message || 'Falha na conversão do vídeo.',
+                      }
+                    : j
+                )
+              );
+            }
           } else {
             setJobs((prev) =>
               prev.map((j) =>
@@ -173,7 +208,7 @@ export default function App() {
                   ? {
                       ...j,
                       status: 'error',
-                      error: 'Servidor temporariamente indisponível para este formato de vídeo. Teste com PDF ou Áudio!',
+                      error: serverErrorMessage || 'Formato não suportado para processamento local.',
                     }
                   : j
               )
@@ -183,7 +218,7 @@ export default function App() {
           setJobs((prev) =>
             prev.map((j) =>
               j.id === tempId
-                ? { ...j, status: 'error', error: clientErr.message || 'Falha na conversão' }
+                ? { ...j, status: 'error', error: serverErrorMessage || clientErr.message || 'Falha na conversão' }
                 : j
             )
           );
@@ -197,7 +232,7 @@ export default function App() {
         if (xhr.status >= 200 && xhr.status < 300) {
           const contentType = xhr.getResponseHeader('content-type') || '';
           if (!contentType.includes('application/json')) {
-            runClientSideFallback();
+            runClientSideFallback(`Servidor respondeu com formato inválido (${xhr.status})`);
             return;
           }
           const data = JSON.parse(xhr.responseText);
@@ -209,18 +244,28 @@ export default function App() {
             });
             return;
           }
-          runClientSideFallback();
+          runClientSideFallback(data.error || 'Nenhum job retornado pelo servidor');
         } else {
-          // If server returned 404 or failed, seamlessly convert directly in browser
-          runClientSideFallback();
+          let errorText = `Falha no envio (HTTP ${xhr.status})`;
+          if (xhr.status === 413) {
+            errorText = 'Arquivo excede o limite máximo de envio (HTTP 413).';
+          } else if (xhr.status === 404) {
+            errorText = 'Servidor de conversão não encontrado (HTTP 404).';
+          } else {
+            try {
+              const errData = JSON.parse(xhr.responseText);
+              if (errData.error) errorText = errData.error;
+            } catch {}
+          }
+          runClientSideFallback(errorText);
         }
       } catch {
-        runClientSideFallback();
+        runClientSideFallback('Erro de resposta do servidor.');
       }
     };
 
     xhr.onerror = () => {
-      runClientSideFallback();
+      runClientSideFallback('Falha de conexão com o servidor durante o envio.');
     };
 
     xhr.send(formData);
