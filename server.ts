@@ -163,7 +163,7 @@ async function processVideoOrAudio(job: Job) {
   if (target === 'mp4') {
     // Ultra-efficient H.264 + AAC with web-optimized faststart
     args.push('-c:v', 'libx264');
-    const preset = job.options?.videoPreset || 'veryfast'; // ultrafast, veryfast, fast, medium
+    const preset = job.options?.videoPreset || 'ultrafast'; // ultrafast for maximum throughput
     args.push('-preset', preset);
 
     const crf = job.options?.videoQuality === 'high' ? '18' : job.options?.videoQuality === 'compact' ? '28' : '23';
@@ -277,8 +277,9 @@ async function processPdfToJpg(job: Job) {
   const gsArgs = [
     '-dNOPAUSE',
     '-dBATCH',
+    '-dNumRenderingThreads=4',
     '-sDEVICE=jpeg',
-    '-dJPEGQ=95',
+    '-dJPEGQ=92',
     `-r${dpi}`,
     `-sOutputFile=${outPattern}`,
     job.inputPath,
