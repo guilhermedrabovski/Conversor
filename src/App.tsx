@@ -9,7 +9,6 @@ import { Dropzone } from './components/Dropzone';
 import { ConversionQueue } from './components/ConversionQueue';
 import { SettingsModal } from './components/SettingsModal';
 import { PreviewModal } from './components/PreviewModal';
-import { FeatureHighlights } from './components/FeatureHighlights';
 import { HelpModal } from './components/HelpModal';
 import { ConversionJob, JobOptions } from './types/converter';
 import { getDefaultTarget, getFileExtension } from './utils/formatDetector';
@@ -440,13 +439,6 @@ export default function App() {
     }
   };
 
-  // Quick select trigger from bottom feature cards
-  const handleQuickSelectFeature = (type: 'webm-mp4' | 'pdf-jpg' | 'ogg-mp3') => {
-    if (type === 'webm-mp4') handleGenerateSample('webm');
-    if (type === 'pdf-jpg') handleGenerateSample('pdf');
-    if (type === 'ogg-mp3') handleGenerateSample('ogg');
-  };
-
   return (
     <div className="min-h-screen flex flex-col bg-slate-950 text-slate-100">
       {/* Top Header */}
@@ -456,17 +448,14 @@ export default function App() {
       />
 
       {/* Main Container */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-6 py-8 md:py-12 space-y-10">
-        {/* Hero Section */}
-        <div className="text-center max-w-3xl mx-auto space-y-4">
-          <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight text-white leading-tight">
-            Conversor Multiformato de <br className="hidden md:block" />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-sky-300 to-emerald-400">
-              Altíssima Performance
-            </span>
+      <main className="flex-1 max-w-4xl w-full mx-auto px-4 sm:px-6 py-8 sm:py-10 space-y-6">
+        {/* Simple Clean Hero */}
+        <div className="text-center max-w-lg mx-auto space-y-1.5 mb-2">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
+            Conversor Rápido de Arquivos
           </h1>
-          <p className="text-slate-400 text-base md:text-lg max-w-2xl mx-auto leading-relaxed">
-            Especializado na conversão rápida e fiel de <strong>WEBM para MP4</strong>, <strong>OGG para MP3</strong>, <strong>PDF para JPG</strong> e dezenas de formatos com aceleração multithread nativa.
+          <p className="text-slate-400 text-xs sm:text-sm">
+            Converta vídeos, áudios e documentos em segundos mantendo a qualidade original.
           </p>
         </div>
 
@@ -495,23 +484,11 @@ export default function App() {
             />
           </div>
         )}
-
-        {/* Feature Highlights & Specifications */}
-        <FeatureHighlights onQuickSelect={handleQuickSelectFeature} />
       </main>
 
-      {/* Footer */}
-      <footer className="border-t border-slate-900 bg-slate-950 py-6 px-6 text-center text-xs text-slate-500">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <span className="font-semibold text-slate-400">HyperConvert Studio</span>
-            <span>·</span>
-            <span>Motor nativo C/Assembly com aceleração por hardware</span>
-          </div>
-          <div>
-            <span>Privacidade garantida: arquivos temporários eliminados automaticamente do disco.</span>
-          </div>
-        </div>
+      {/* Clean Minimal Footer */}
+      <footer className="border-t border-slate-900 py-4 px-6 text-center text-xs text-slate-500">
+        <p>HyperConvert · Processamento ultrarrápido · Arquivos temporários excluídos automaticamente</p>
       </footer>
 
       {/* Modals */}

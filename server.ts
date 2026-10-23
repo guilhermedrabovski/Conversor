@@ -812,15 +812,15 @@ app.all('/api/*', (_req: Request, res: Response) => {
 async function startServer() {
   const distPath = path.join(__dirname, 'dist');
   const hasDist = fs.existsSync(path.join(distPath, 'index.html'));
-  const isDev = process.env.npm_lifecycle_event === 'dev' || (!hasDist && process.env.NODE_ENV !== 'production');
+  const isProduction = process.env.NODE_ENV === 'production' && hasDist;
 
-  if (isDev) {
+  if (!isProduction) {
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: 'spa',
     });
     app.use(vite.middlewares);
-    console.log('[HyperConvert Studio] Running in development mode with Vite middleware');
+    console.log('[HyperConvert Studio] Running in development mode with live Vite middleware');
   } else {
     app.use(express.static(distPath));
     app.get('*', (_req, res) => {
