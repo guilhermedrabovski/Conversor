@@ -44,6 +44,12 @@ export const PreviewModal: React.FC<PreviewModalProps> = ({ job, onClose, onDown
                     <span className="font-mono tabular-nums">{formatBytes(job.outputSize)}</span>
                   </>
                 )}
+                {job.conversionTimeSeconds !== undefined && (
+                  <>
+                    <span aria-hidden="true">·</span>
+                    <span className="text-amber-300 font-mono">⏱️ {job.conversionTimeSeconds}s</span>
+                  </>
+                )}
                 {pageCount > 1 && (
                   <>
                     <span aria-hidden="true">·</span>

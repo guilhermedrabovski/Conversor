@@ -22,6 +22,8 @@ export interface ConversionJob {
   pageCount?: number;
   options?: JobOptions;
   createdAt?: number;
+  startedAt?: number;
+  conversionTimeSeconds?: number;
   clientDownloadUrl?: string;
   clientBlob?: Blob;
   clientOutputFiles?: { name: string; blob: Blob; url: string }[];

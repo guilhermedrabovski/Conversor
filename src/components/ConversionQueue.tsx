@@ -15,6 +15,7 @@ import {
   ArrowRight,
   RotateCw,
   UploadCloud,
+  Timer,
 } from 'lucide-react';
 import { ConversionJob } from '../types/converter';
 import { formatBytes, getCompatibleTargets, getFileExtension } from '../utils/formatDetector';
@@ -158,20 +159,33 @@ export const ConversionQueue: React.FC<ConversionQueueProps> = ({
                     <span aria-hidden="true">·</span>
                     <span className="uppercase text-slate-500">{getFileExtension(job.originalName)}</span>
 
-                    {isCompleted && job.outputSize && (
+                    {isCompleted && (
                       <>
-                        <span aria-hidden="true">·</span>
-                        <span className="text-slate-300">
-                          Resultado: <span className="font-mono tabular-nums text-indigo-300">{formatBytes(job.outputSize)}</span>
-                        </span>
-                        {savingsPercent !== null && (
-                          <span
-                            className={`font-mono text-[11px] ${
-                              savingsPercent > 0 ? 'text-emerald-400' : 'text-slate-400'
-                            }`}
-                          >
-                            ({savingsPercent > 0 ? `-${savingsPercent}%` : `+${Math.abs(savingsPercent)}%`})
-                          </span>
+                        {job.conversionTimeSeconds !== undefined && (
+                          <>
+                            <span aria-hidden="true">·</span>
+                            <span className="inline-flex items-center gap-1 font-mono text-[11px] font-bold text-amber-300 bg-amber-950/70 border border-amber-500/40 px-2 py-0.5 rounded-md shadow-sm">
+                              <Timer className="w-3 h-3 text-amber-400" />
+                              <span>Tempo: {job.conversionTimeSeconds}s</span>
+                            </span>
+                          </>
+                        )}
+                        {job.outputSize && (
+                          <>
+                            <span aria-hidden="true">·</span>
+                            <span className="text-slate-300">
+                              Resultado: <span className="font-mono tabular-nums text-indigo-300">{formatBytes(job.outputSize)}</span>
+                            </span>
+                            {savingsPercent !== null && (
+                              <span
+                                className={`font-mono text-[11px] ${
+                                  savingsPercent > 0 ? 'text-emerald-400' : 'text-slate-400'
+                                }`}
+                              >
+                                ({savingsPercent > 0 ? `-${savingsPercent}%` : `+${Math.abs(savingsPercent)}%`})
+                              </span>
+                            )}
+                          </>
                         )}
                       </>
                     )}

@@ -1,0 +1,21 @@
+{
+  "id": "5ltz4e",
+  "originalName": "documento-amostra.pdf",
+  "inputPath": "/app/applet/temp_uploads/amostra-5ltz4e.pdf",
+  "targetFormat": "jpg",
+  "status": "completed",
+  "progress": 100,
+  "inputSize": 1688,
+  "createdAt": 1792760791255,
+  "options": {
+    "dpi": "150"
+  },
+  "startedAt": 1792760791255,
+  "outputFiles": [
+    "/app/applet/temp_outputs/pdf-5ltz4e/page-001.jpg",
+    "/app/applet/temp_outputs/pdf-5ltz4e/page-002.jpg"
+  ],
+  "outputSize": 66679,
+  "outputPath": "/app/applet/temp_outputs/pdf-5ltz4e/page-001.jpg",
+  "conversionTimeSeconds": 0.3
+}

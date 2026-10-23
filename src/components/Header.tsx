@@ -36,8 +36,16 @@ export const Header: React.FC<HeaderProps> = ({ onOpenHelp, activeJobsCount = 0 
           </a>
         </nav>
 
-        {/* Zone 3: 1 primary action */}
+        {/* Zone 3: Actions & Version indicator */}
         <div className="flex items-center gap-3 shrink-0">
+          <div className="flex items-center gap-2 text-xs font-medium text-amber-300 bg-amber-950/40 border border-amber-500/40 px-3 py-1.5 rounded-lg whitespace-nowrap shadow-sm shadow-amber-900/20">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+            </span>
+            <span>v2.8 Turbo · ⏱️ Cronômetro Ativo</span>
+          </div>
+
           <div className="hidden sm:flex items-center gap-2 text-xs font-medium text-emerald-400 bg-emerald-950/40 border border-emerald-800/40 px-3 py-1.5 rounded-lg whitespace-nowrap">
             <Cpu className="w-3.5 h-3.5" />
             <span>FFmpeg Nativo & Ghostscript</span>

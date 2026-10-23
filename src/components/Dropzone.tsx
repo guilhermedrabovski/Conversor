@@ -84,6 +84,14 @@ export const Dropzone: React.FC<DropzoneProps> = ({
             )}
           </div>
 
+          <div className="mb-3 inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-gradient-to-r from-amber-500/20 via-indigo-500/20 to-emerald-500/20 border border-amber-500/40 text-xs font-semibold text-amber-300 shadow-sm">
+            <span className="text-amber-400 font-bold">⏱️ NOVIDADE</span>
+            <span className="text-slate-500" aria-hidden="true">·</span>
+            <span>Tempo de conversão em segundos</span>
+            <span className="text-slate-500" aria-hidden="true">·</span>
+            <span className="text-emerald-400">Motor Turbo 25x</span>
+          </div>
+
           <h2 className="text-xl md:text-2xl font-bold text-white mb-2 tracking-tight">
             {isUploading ? 'Recebendo e adicionando arquivo à fila...' : 'Arraste e solte seus arquivos aqui'}
           </h2>

@@ -78,6 +78,8 @@ interface Job {
   outputSize?: number;
   error?: string;
   createdAt: number;
+  startedAt?: number;
+  conversionTimeSeconds?: number;
   mimeType?: string;
   options?: {
     videoPreset?: string;
@@ -394,6 +396,8 @@ async function processImageToPdf(job: Job) {
 async function executeConversion(job: Job) {
   job.status = 'processing';
   job.progress = 5;
+  job.startedAt = Date.now();
+  saveJob(job);
 
   const ext = path.extname(job.originalName).toLowerCase().replace('.', '');
   const target = job.targetFormat.toLowerCase();
@@ -407,9 +411,13 @@ async function executeConversion(job: Job) {
       // Audio, Video, and Image conversions via FFmpeg
       await processVideoOrAudio(job);
     }
+    job.conversionTimeSeconds = Math.round(((Date.now() - (job.startedAt || job.createdAt)) / 1000) * 10) / 10;
+    saveJob(job);
   } catch (err: any) {
     job.status = 'error';
+    job.conversionTimeSeconds = Math.round(((Date.now() - (job.startedAt || job.createdAt)) / 1000) * 10) / 10;
     job.error = err?.message || 'Falha durante o processamento do arquivo';
+    saveJob(job);
   }
 }
 
@@ -493,6 +501,8 @@ app.get('/api/job/:jobId', (req: Request, res: Response) => {
     inputSize: job.inputSize,
     outputSize: job.outputSize,
     error: job.error,
+    startedAt: job.startedAt,
+    conversionTimeSeconds: job.conversionTimeSeconds,
     pageCount: job.outputFiles?.length || (job.status === 'completed' ? 1 : 0),
   });
 });

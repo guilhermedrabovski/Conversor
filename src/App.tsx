@@ -54,6 +54,8 @@ export default function App() {
                       outputSize: data.outputSize,
                       error: data.error,
                       pageCount: data.pageCount,
+                      startedAt: data.startedAt,
+                      conversionTimeSeconds: data.conversionTimeSeconds,
                     }
                   : j
               )
