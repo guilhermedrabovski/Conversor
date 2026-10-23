@@ -230,19 +230,24 @@ export const ConversionQueue: React.FC<ConversionQueueProps> = ({
                 )}
 
                 {isProcessing && (
-                  <div className="flex items-center gap-3 min-w-[140px]">
+                  <div className="flex items-center gap-3 min-w-[150px]">
                     <div className="w-full">
                       <div className="flex items-center justify-between text-xs mb-1">
-                        <span className="text-indigo-400 flex items-center gap-1">
-                          <Loader2 className="w-3 h-3 animate-spin" />
-                          <span>Processando</span>
+                        <span className="text-indigo-400 flex items-center gap-1.5">
+                          <Loader2 className="w-3 h-3 animate-spin shrink-0" />
+                          <span>Convertendo</span>
+                          {job.speed && (
+                            <span className="text-[10px] text-emerald-400 font-mono font-bold bg-emerald-950/80 px-1 py-0.5 rounded border border-emerald-800/60">
+                              {job.speed}
+                            </span>
+                          )}
                         </span>
-                        <span className="font-mono tabular-nums text-slate-300">{job.progress}%</span>
+                        <span className="font-mono tabular-nums text-slate-300 font-semibold">{job.progress}%</span>
                       </div>
                       <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
                         <div
-                          className="h-full bg-indigo-500 transition-all duration-300 rounded-full"
-                          style={{ width: `${job.progress}%` }}
+                          className="h-full bg-gradient-to-r from-indigo-500 to-sky-400 transition-all duration-200 rounded-full"
+                          style={{ width: `${Math.max(6, job.progress)}%` }}
                         />
                       </div>
                     </div>

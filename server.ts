@@ -161,30 +161,41 @@ async function processVideoOrAudio(job: Job) {
 
   // Specific format configurations
   if (target === 'mp4') {
-    // Ultra-efficient H.264 + AAC with web-optimized faststart
-    args.push('-c:v', 'libx264');
-    const preset = job.options?.videoPreset || 'ultrafast'; // ultrafast for maximum throughput
-    args.push('-preset', preset);
+    // Check if video is already H.264 - if so, stream copy is instant (0.1s!)
+    const canCopyVideo = probe.vCodec === 'h264' && (!job.options?.resolution || job.options.resolution === 'original');
 
-    const crf = job.options?.videoQuality === 'high' ? '18' : job.options?.videoQuality === 'compact' ? '28' : '23';
-    args.push('-crf', crf);
+    if (canCopyVideo) {
+      args.push('-c:v', 'copy');
+    } else {
+      args.push('-c:v', 'libx264');
+      const preset = job.options?.videoPreset || 'ultrafast';
+      args.push('-preset', preset);
+      args.push('-tune', 'zerolatency');
 
-    // CRITICAL: Ensure dimensions are always even numbers (divisible by 2) to avoid libx264 fatal errors
-    let vf = 'scale=trunc(iw/2)*2:trunc(ih/2)*2,format=yuv420p';
-    if (job.options?.resolution && job.options.resolution !== 'original') {
-      const resMap: Record<string, string> = {
-        '1080p': 'scale=-2:1080,format=yuv420p',
-        '720p': 'scale=-2:720,format=yuv420p',
-        '480p': 'scale=-2:480,format=yuv420p',
-      };
-      if (resMap[job.options.resolution]) {
-        vf = resMap[job.options.resolution];
+      const crf = job.options?.videoQuality === 'high' ? '20' : job.options?.videoQuality === 'compact' ? '28' : '24';
+      args.push('-crf', crf);
+
+      // Ensure dimensions are always even numbers
+      let vf = 'scale=trunc(iw/2)*2:trunc(ih/2)*2,format=yuv420p';
+      if (job.options?.resolution && job.options.resolution !== 'original') {
+        const resMap: Record<string, string> = {
+          '1080p': 'scale=-2:1080,format=yuv420p',
+          '720p': 'scale=-2:720,format=yuv420p',
+          '480p': 'scale=-2:480,format=yuv420p',
+        };
+        if (resMap[job.options.resolution]) {
+          vf = resMap[job.options.resolution];
+        }
       }
+      args.push('-vf', vf);
     }
-    args.push('-vf', vf);
 
-    // Audio encoding with AAC
-    args.push('-c:a', 'aac', '-b:a', '192k', '-movflags', '+faststart');
+    // Fast AAC audio encoding (or copy if already aac)
+    if (probe.aCodec === 'aac') {
+      args.push('-c:a', 'copy');
+    } else {
+      args.push('-c:a', 'aac', '-b:a', '128k');
+    }
   } else if (target === 'webm') {
     args.push('-c:v', 'libvpx-vp9', '-b:v', '0', '-crf', '30', '-c:a', 'libopus', '-b:a', '128k', '-deadline', 'realtime', '-cpu-used', '4');
     args.push('-vf', 'scale=trunc(iw/2)*2:trunc(ih/2)*2');
