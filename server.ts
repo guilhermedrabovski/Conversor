@@ -1,4 +1,5 @@
 import express from 'express';
+import cors from 'cors';
 import type { Request, Response } from 'express';
 import { createServer as createViteServer } from 'vite';
 import path from 'path';
@@ -61,6 +62,7 @@ const upload = multer({
   limits: { fileSize: 1024 * 1024 * 1024 }, // 1 GB limit
 });
 
+app.use(cors());
 app.use(express.json());
 
 interface Job {

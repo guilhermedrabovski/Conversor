@@ -224,19 +224,24 @@ export const ConversionQueue: React.FC<ConversionQueueProps> = ({
               {/* Right Zone: Progress & Actions */}
               <div className="flex items-center gap-3 shrink-0">
                 {isUploading && (
-                  <div className="flex items-center gap-3 min-w-[140px]">
+                  <div className="flex items-center gap-3 min-w-[170px]">
                     <div className="w-full">
                       <div className="flex items-center justify-between text-xs mb-1">
                         <span className="text-sky-400 flex items-center gap-1">
-                          <UploadCloud className="w-3.5 h-3.5 animate-bounce" />
+                          <UploadCloud className="w-3.5 h-3.5 animate-bounce shrink-0" />
                           <span>Enviando</span>
+                          {job.uploadSpeed && (
+                            <span className="text-[10px] text-sky-300 font-mono">
+                              ({job.uploadSpeed}{job.uploadEta !== undefined ? ` · ~${job.uploadEta}s` : ''})
+                            </span>
+                          )}
                         </span>
-                        <span className="font-mono tabular-nums text-slate-300">{job.progress}%</span>
+                        <span className="font-mono tabular-nums text-slate-300 font-semibold">{job.progress}%</span>
                       </div>
                       <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
                         <div
-                          className="h-full bg-sky-500 transition-all duration-150 rounded-full"
-                          style={{ width: `${Math.max(8, job.progress)}%` }}
+                          className="h-full bg-gradient-to-r from-sky-500 to-indigo-500 transition-all duration-150 rounded-full"
+                          style={{ width: `${Math.max(6, job.progress)}%` }}
                         />
                       </div>
                     </div>

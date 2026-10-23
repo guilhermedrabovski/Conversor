@@ -101,11 +101,28 @@ export default function App() {
     const xhr = new XMLHttpRequest();
     xhr.open('POST', '/api/convert');
 
+    const uploadStartTime = Date.now();
     xhr.upload.onprogress = (event) => {
       if (event.lengthComputable) {
         const percent = Math.min(99, Math.round((event.loaded / event.total) * 100));
+        const elapsedSec = (Date.now() - uploadStartTime) / 1000;
+        const speedMB = elapsedSec > 0.3 ? (event.loaded / (1024 * 1024)) / elapsedSec : 0;
+        const remainingBytes = event.total - event.loaded;
+        const eta = speedMB > 0 ? Math.ceil((remainingBytes / (1024 * 1024)) / speedMB) : undefined;
+
         setJobs((prev) =>
-          prev.map((j) => (tempIds.includes(j.id) ? { ...j, progress: percent } : j))
+          prev.map((j) =>
+            tempIds.includes(j.id)
+              ? {
+                  ...j,
+                  progress: percent,
+                  uploadLoaded: event.loaded,
+                  uploadTotal: event.total,
+                  uploadSpeed: speedMB > 0 ? `${speedMB.toFixed(1)} MB/s` : undefined,
+                  uploadEta: eta,
+                }
+              : j
+          )
         );
       }
     };
@@ -449,14 +466,21 @@ export default function App() {
 
       {/* Main Container */}
       <main className="flex-1 max-w-4xl w-full mx-auto px-4 sm:px-6 py-8 sm:py-10 space-y-6">
-        {/* Simple Clean Hero */}
-        <div className="text-center max-w-lg mx-auto space-y-1.5 mb-2">
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
-            Conversor Rápido de Arquivos
-          </h1>
-          <p className="text-slate-400 text-xs sm:text-sm">
-            Converta vídeos, áudios e documentos em segundos mantendo a qualidade original.
-          </p>
+        {/* Simple Clean Hero with Logo */}
+        <div className="text-center max-w-lg mx-auto space-y-3 mb-2 flex flex-col items-center">
+          <img
+            src="/logo.png"
+            alt="RICTV"
+            className="w-14 h-14 rounded-2xl shadow-xl shadow-blue-600/20 object-contain hover:scale-105 transition-transform"
+          />
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white uppercase">
+              CONVERSOR RICTV
+            </h1>
+            <p className="text-slate-400 text-xs sm:text-sm mt-1">
+              Conversão rápida de vídeos, áudios e documentos em alta fidelidade.
+            </p>
+          </div>
         </div>
 
         {/* Dropzone Area */}
@@ -488,7 +512,7 @@ export default function App() {
 
       {/* Clean Minimal Footer */}
       <footer className="border-t border-slate-900 py-4 px-6 text-center text-xs text-slate-500">
-        <p>HyperConvert · Processamento ultrarrápido · Arquivos temporários excluídos automaticamente</p>
+        <p>CONVERSOR RICTV · Processamento ultrarrápido · Arquivos temporários excluídos automaticamente</p>
       </footer>
 
       {/* Modals */}

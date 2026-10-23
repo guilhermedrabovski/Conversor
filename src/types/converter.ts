@@ -24,6 +24,10 @@ export interface ConversionJob {
   createdAt?: number;
   startedAt?: number;
   conversionTimeSeconds?: number;
+  uploadSpeed?: string;
+  uploadLoaded?: number;
+  uploadTotal?: number;
+  uploadEta?: number;
   clientDownloadUrl?: string;
   clientBlob?: Blob;
   clientOutputFiles?: { name: string; blob: Blob; url: string }[];
