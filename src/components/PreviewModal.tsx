@@ -20,7 +20,7 @@ export const PreviewModal: React.FC<PreviewModalProps> = ({ job, onClose, onDown
   const isAudio = ['mp3', 'ogg', 'wav', 'aac'].includes(target);
   const isImage = ['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(target);
 
-  const previewUrl = `/api/preview/${job.id}`;
+  const previewUrl = job.clientDownloadUrl || `/api/preview/${job.id}`;
   const pageCount = job.pageCount || 1;
 
   return (

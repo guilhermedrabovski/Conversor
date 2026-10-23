@@ -12,7 +12,8 @@ import { PreviewModal } from './components/PreviewModal';
 import { FeatureHighlights } from './components/FeatureHighlights';
 import { HelpModal } from './components/HelpModal';
 import { ConversionJob, JobOptions } from './types/converter';
-import { getDefaultTarget } from './utils/formatDetector';
+import { getDefaultTarget, getFileExtension } from './utils/formatDetector';
+import { convertPdfClientSide, convertAudioClientSide } from './utils/clientConverter';
 
 export default function App() {
   const [jobs, setJobs] = useState<ConversionJob[]>([]);
@@ -108,13 +109,96 @@ export default function App() {
       }
     };
 
+    const runClientSideFallback = async () => {
+      setIsUploading(false);
+      for (let i = 0; i < filesArray.length; i++) {
+        const file = filesArray[i];
+        const tempId = tempIds[i];
+        const ext = getFileExtension(file.name);
+        const target = getDefaultTarget(file.name);
+
+        setJobs((prev) =>
+          prev.map((j) => (j.id === tempId ? { ...j, status: 'processing', progress: 20 } : j))
+        );
+
+        try {
+          if (ext === 'pdf') {
+            const result = await convertPdfClientSide(file, 150, (pct) => {
+              setJobs((prev) =>
+                prev.map((j) => (j.id === tempId ? { ...j, progress: pct } : j))
+              );
+            });
+
+            setJobs((prev) =>
+              prev.map((j) =>
+                j.id === tempId
+                  ? {
+                      ...j,
+                      status: 'completed',
+                      progress: 100,
+                      outputSize: result.size,
+                      pageCount: result.outputFiles.length,
+                      clientDownloadUrl: result.primaryUrl,
+                      clientBlob: result.primaryBlob,
+                      clientOutputFiles: result.outputFiles,
+                    }
+                  : j
+              )
+            );
+          } else if (['ogg', 'mp3', 'wav', 'aac', 'flac', 'm4a'].includes(ext)) {
+            const result = await convertAudioClientSide(file, target, (pct) => {
+              setJobs((prev) =>
+                prev.map((j) => (j.id === tempId ? { ...j, progress: pct } : j))
+              );
+            });
+
+            setJobs((prev) =>
+              prev.map((j) =>
+                j.id === tempId
+                  ? {
+                      ...j,
+                      status: 'completed',
+                      progress: 100,
+                      outputSize: result.size,
+                      clientDownloadUrl: result.primaryUrl,
+                      clientBlob: result.primaryBlob,
+                    }
+                  : j
+              )
+            );
+          } else {
+            setJobs((prev) =>
+              prev.map((j) =>
+                j.id === tempId
+                  ? {
+                      ...j,
+                      status: 'error',
+                      error: 'Servidor temporariamente indisponível para este formato de vídeo. Teste com PDF ou Áudio!',
+                    }
+                  : j
+              )
+            );
+          }
+        } catch (clientErr: any) {
+          setJobs((prev) =>
+            prev.map((j) =>
+              j.id === tempId
+                ? { ...j, status: 'error', error: clientErr.message || 'Falha na conversão' }
+                : j
+            )
+          );
+        }
+      }
+    };
+
     xhr.onload = () => {
       setIsUploading(false);
       try {
         if (xhr.status >= 200 && xhr.status < 300) {
           const contentType = xhr.getResponseHeader('content-type') || '';
           if (!contentType.includes('application/json')) {
-            throw new Error(`Servidor respondeu com formato inesperado (${xhr.status})`);
+            runClientSideFallback();
+            return;
           }
           const data = JSON.parse(xhr.responseText);
           if (data.jobs && Array.isArray(data.jobs)) {
@@ -125,35 +209,18 @@ export default function App() {
             });
             return;
           }
-          throw new Error(data.error || 'Nenhum job retornado pelo servidor');
+          runClientSideFallback();
         } else {
-          let errorMsg = `Falha no envio (código ${xhr.status})`;
-          try {
-            const errData = JSON.parse(xhr.responseText);
-            if (errData.error) errorMsg = errData.error;
-          } catch {}
-          throw new Error(errorMsg);
+          // If server returned 404 or failed, seamlessly convert directly in browser
+          runClientSideFallback();
         }
-      } catch (err: any) {
-        setJobs((prev) =>
-          prev.map((j) =>
-            tempIds.includes(j.id)
-              ? { ...j, status: 'error', error: err.message || 'Falha no processamento' }
-              : j
-          )
-        );
+      } catch {
+        runClientSideFallback();
       }
     };
 
     xhr.onerror = () => {
-      setIsUploading(false);
-      setJobs((prev) =>
-        prev.map((j) =>
-          tempIds.includes(j.id)
-            ? { ...j, status: 'error', error: 'Falha de conexão durante o envio do arquivo' }
-            : j
-        )
-      );
+      runClientSideFallback();
     };
 
     xhr.send(formData);
@@ -267,8 +334,34 @@ export default function App() {
     setSelectedJobForSettings(null);
   };
 
-  // Download single job
+  // Download single job (supports both client-side and server-side)
   const handleDownload = (jobId: string) => {
+    const job = jobs.find((j) => j.id === jobId);
+    if (job?.clientOutputFiles && job.clientOutputFiles.length > 1) {
+      job.clientOutputFiles.forEach((file, idx) => {
+        setTimeout(() => {
+          const a = document.createElement('a');
+          a.href = file.url;
+          a.download = file.name;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+        }, idx * 250);
+      });
+      return;
+    }
+
+    if (job?.clientDownloadUrl) {
+      const a = document.createElement('a');
+      a.href = job.clientDownloadUrl;
+      const baseName = job.originalName.replace(/\.[^/.]+$/, '');
+      a.download = `${baseName}.${job.targetFormat}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      return;
+    }
+
     window.location.href = `/api/download/${jobId}`;
   };
 

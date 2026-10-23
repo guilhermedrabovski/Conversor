@@ -22,6 +22,9 @@ export interface ConversionJob {
   pageCount?: number;
   options?: JobOptions;
   createdAt?: number;
+  clientDownloadUrl?: string;
+  clientBlob?: Blob;
+  clientOutputFiles?: { name: string; blob: Blob; url: string }[];
 }
 
 export type SupportedTarget = {

@@ -10,11 +10,14 @@ import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const app = express();
-const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3e3;
+const isProd = process.env.NODE_ENV === "production";
+const PORT = 3e3;
 const UPLOADS_DIR = path.join(__dirname, "temp_uploads");
 const OUTPUTS_DIR = path.join(__dirname, "temp_outputs");
+const JOBS_DIR = path.join(__dirname, "temp_jobs");
 if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 if (!fs.existsSync(OUTPUTS_DIR)) fs.mkdirSync(OUTPUTS_DIR, { recursive: true });
+if (!fs.existsSync(JOBS_DIR)) fs.mkdirSync(JOBS_DIR, { recursive: true });
 const cleanupOldFiles = () => {
   const maxAge = 30 * 60 * 1e3;
   const now = Date.now();
@@ -50,6 +53,27 @@ const upload = multer({
 });
 app.use(express.json());
 const jobs = /* @__PURE__ */ new Map();
+function saveJob(job) {
+  jobs.set(job.id, job);
+  try {
+    fs.writeFileSync(path.join(JOBS_DIR, `${job.id}.json`), JSON.stringify(job, null, 2));
+  } catch (err) {
+    console.error("Falha ao salvar job no disco:", err);
+  }
+}
+function getJob(id) {
+  if (jobs.has(id)) return jobs.get(id);
+  const filePath = path.join(JOBS_DIR, `${id}.json`);
+  if (fs.existsSync(filePath)) {
+    try {
+      const data = JSON.parse(fs.readFileSync(filePath, "utf-8"));
+      jobs.set(id, data);
+      return data;
+    } catch {
+    }
+  }
+  return void 0;
+}
 function probeMedia(filePath) {
   return new Promise((resolve) => {
     const cmd = `ffprobe -v quiet -print_format json -show_format -show_streams "${filePath}"`;
@@ -158,6 +182,7 @@ async function processVideoOrAudio(job) {
         job.status = "completed";
         const stats = fs.statSync(outputPath);
         job.outputSize = stats.size;
+        saveJob(job);
         resolve();
       } else {
         job.status = "error";
@@ -166,12 +191,14 @@ async function processVideoOrAudio(job) {
         );
         const specificError = errorLines.length > 0 ? errorLines[errorLines.length - 1].trim() : `C\xF3digo de sa\xEDda ${code}`;
         job.error = `Falha na convers\xE3o: ${specificError}`;
+        saveJob(job);
         reject(new Error(job.error));
       }
     });
     ffmpegProc.on("error", (err) => {
       job.status = "error";
       job.error = err.message;
+      saveJob(job);
       reject(err);
     });
   });
@@ -214,16 +241,19 @@ async function processPdfToJpg(job) {
           job.outputSize = files.reduce((acc, curr) => acc + fs.statSync(curr).size, 0);
           job.outputPath = files[0];
         }
+        saveJob(job);
         resolve();
       } else {
         job.status = "error";
         job.error = `Erro do Ghostscript ao processar PDF (c\xF3digo ${code})`;
+        saveJob(job);
         reject(new Error(job.error));
       }
     });
     gsProc.on("error", (err) => {
       job.status = "error";
       job.error = err.message;
+      saveJob(job);
       reject(err);
     });
   });
@@ -256,9 +286,11 @@ async function processImageToPdf(job) {
     job.progress = 100;
     job.status = "completed";
     job.outputSize = pdfBytes.length;
+    saveJob(job);
   } catch (err) {
     job.status = "error";
     job.error = `Falha ao converter imagem para PDF: ${err.message}`;
+    saveJob(job);
     throw err;
   }
 }
@@ -280,49 +312,59 @@ async function executeConversion(job) {
     job.error = err?.message || "Falha durante o processamento do arquivo";
   }
 }
-app.post("/api/convert", upload.array("files", 20), async (req, res) => {
-  const files = req.files;
-  if (!files || files.length === 0) {
-    return res.status(400).json({ error: "Nenhum arquivo enviado." });
-  }
-  const defaultTarget = (req.body.targetFormat || "mp4").toLowerCase();
-  const options = req.body.options ? JSON.parse(req.body.options) : {};
-  const createdJobs = [];
-  for (const file of files) {
-    const jobId = Math.random().toString(36).substring(2, 10);
-    const ext = path.extname(file.originalname).toLowerCase().replace(".", "");
-    let target = defaultTarget;
-    if (req.body.autoDetectTarget === "true" || !req.body.targetFormat) {
-      if (ext === "webm") target = "mp4";
-      else if (ext === "ogg") target = "mp3";
-      else if (ext === "pdf") target = "jpg";
-      else if (ext === "mp4") target = "webm";
-      else if (ext === "mp3") target = "wav";
-      else if (["wav", "m4a", "flac", "aac"].includes(ext)) target = "mp3";
-      else if (["mov", "mkv", "avi"].includes(ext)) target = "mp4";
-      else if (["png", "webp"].includes(ext)) target = "jpg";
-      else if (ext === "jpg" || ext === "jpeg") target = "png";
+app.post("/api/convert", (req, res) => {
+  upload.array("files", 20)(req, res, async (err) => {
+    if (err) {
+      console.error("Multer upload error:", err);
+      return res.status(400).json({ error: `Falha no upload do arquivo: ${err.message}` });
     }
-    const job = {
-      id: jobId,
-      originalName: file.originalname,
-      inputPath: file.path,
-      targetFormat: target,
-      status: "queued",
-      progress: 0,
-      inputSize: file.size,
-      createdAt: Date.now(),
-      mimeType: file.mimetype,
-      options: { ...options }
-    };
-    jobs.set(jobId, job);
-    createdJobs.push(job);
-    executeConversion(job);
-  }
-  return res.json({ success: true, jobs: createdJobs });
+    const files = req.files;
+    if (!files || files.length === 0) {
+      return res.status(400).json({ error: "Nenhum arquivo enviado." });
+    }
+    const defaultTarget = (req.body.targetFormat || "mp4").toLowerCase();
+    let options = {};
+    try {
+      if (req.body.options) options = JSON.parse(req.body.options);
+    } catch {
+    }
+    const createdJobs = [];
+    for (const file of files) {
+      const jobId = Math.random().toString(36).substring(2, 10);
+      const ext = path.extname(file.originalname).toLowerCase().replace(".", "");
+      let target = defaultTarget;
+      if (req.body.autoDetectTarget === "true" || !req.body.targetFormat) {
+        if (ext === "webm") target = "mp4";
+        else if (ext === "ogg") target = "mp3";
+        else if (ext === "pdf") target = "jpg";
+        else if (ext === "mp4") target = "webm";
+        else if (ext === "mp3") target = "wav";
+        else if (["wav", "m4a", "flac", "aac"].includes(ext)) target = "mp3";
+        else if (["mov", "mkv", "avi"].includes(ext)) target = "mp4";
+        else if (["png", "webp"].includes(ext)) target = "jpg";
+        else if (ext === "jpg" || ext === "jpeg") target = "png";
+      }
+      const job = {
+        id: jobId,
+        originalName: file.originalname,
+        inputPath: file.path,
+        targetFormat: target,
+        status: "queued",
+        progress: 0,
+        inputSize: file.size,
+        createdAt: Date.now(),
+        mimeType: file.mimetype,
+        options: { ...options }
+      };
+      saveJob(job);
+      createdJobs.push(job);
+      executeConversion(job);
+    }
+    return res.json({ success: true, jobs: createdJobs });
+  });
 });
 app.get("/api/job/:jobId", (req, res) => {
-  const job = jobs.get(req.params.jobId);
+  const job = getJob(req.params.jobId);
   if (!job) {
     return res.status(404).json({ error: "Job n\xE3o encontrado" });
   }
@@ -341,7 +383,7 @@ app.get("/api/job/:jobId", (req, res) => {
   });
 });
 app.post("/api/retry/:jobId", (req, res) => {
-  const job = jobs.get(req.params.jobId);
+  const job = getJob(req.params.jobId);
   if (!job) {
     return res.status(404).json({ error: "Job n\xE3o encontrado" });
   }
@@ -357,11 +399,12 @@ app.post("/api/retry/:jobId", (req, res) => {
   if (req.body.options) {
     job.options = { ...job.options, ...req.body.options };
   }
+  saveJob(job);
   executeConversion(job);
   return res.json({ success: true, job });
 });
 app.get("/api/download/:jobId", (req, res) => {
-  const job = jobs.get(req.params.jobId);
+  const job = getJob(req.params.jobId);
   if (!job || job.status !== "completed") {
     return res.status(404).send("Arquivo convertido n\xE3o encontrado ou ainda em processamento.");
   }
@@ -385,7 +428,7 @@ app.get("/api/download/:jobId", (req, res) => {
   return res.status(404).send("Arquivo de sa\xEDda n\xE3o encontrado no disco.");
 });
 app.get("/api/preview/:jobId", (req, res) => {
-  const job = jobs.get(req.params.jobId);
+  const job = getJob(req.params.jobId);
   if (!job || job.status !== "completed" || !job.outputPath || !fs.existsSync(job.outputPath)) {
     return res.status(404).send("M\xEDdia n\xE3o dispon\xEDvel para pr\xE9-visualiza\xE7\xE3o.");
   }
@@ -418,7 +461,7 @@ app.post("/api/download-all-zip", (req, res) => {
   const archive = new ZipArchive({ zlib: { level: 6 } });
   archive.pipe(res);
   jobIds.forEach((id) => {
-    const job = jobs.get(id);
+    const job = getJob(id);
     if (job && job.status === "completed") {
       const baseName = path.parse(job.originalName).name;
       if (job.outputFiles && job.outputFiles.length > 1) {
@@ -595,23 +638,52 @@ app.get("/api/system-status", (_req, res) => {
     }
   });
 });
+app.all("/api/*", (_req, res) => {
+  res.status(404).json({ error: "Endpoint da API n\xE3o encontrado" });
+});
 async function startServer() {
-  const isProd = process.env.NODE_ENV === "production";
-  if (!isProd) {
+  const distPath = path.join(__dirname, "dist");
+  const hasDist = fs.existsSync(path.join(distPath, "index.html"));
+  const isDev = process.env.npm_lifecycle_event === "dev" || !hasDist && process.env.NODE_ENV !== "production";
+  if (isDev) {
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa"
     });
     app.use(vite.middlewares);
+    console.log("[HyperConvert Studio] Running in development mode with Vite middleware");
   } else {
-    const distPath = path.join(__dirname, "dist");
     app.use(express.static(distPath));
     app.get("*", (_req, res) => {
       res.sendFile(path.join(distPath, "index.html"));
     });
+    console.log("[HyperConvert Studio] Running in production mode serving static dist bundle");
   }
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`[HyperConvert Studio] Server running on http://0.0.0.0:${PORT}`);
+  const targetPort = process.env.PORT ? parseInt(process.env.PORT, 10) : 3e3;
+  const server = app.listen(targetPort, "0.0.0.0", () => {
+    console.log(`[HyperConvert Studio] Server listening on primary port ${targetPort}`);
+  });
+  server.on("error", (err) => {
+    if (err.code === "EADDRINUSE" && targetPort !== 3e3) {
+      console.log(`[HyperConvert Studio] Port ${targetPort} is already bound (Nginx dev proxy). Falling back to port 3000...`);
+      app.listen(3e3, "0.0.0.0", () => {
+        console.log("[HyperConvert Studio] Server listening on port 3000");
+      });
+    } else {
+      console.error("[HyperConvert Studio] Server listen error:", err);
+    }
+  });
+  server.on("listening", () => {
+    if (targetPort !== 3e3) {
+      try {
+        const secondary = app.listen(3e3, "0.0.0.0", () => {
+          console.log("[HyperConvert Studio] Also listening on port 3000 as secondary");
+        });
+        secondary.on("error", () => {
+        });
+      } catch {
+      }
+    }
   });
 }
 startServer();

@@ -1,0 +1,18 @@
+{
+  "id": "1wuyfs",
+  "originalName": "amostra-video.webm",
+  "inputPath": "/app/applet/temp_uploads/amostra-1wuyfs.webm",
+  "targetFormat": "mp4",
+  "status": "completed",
+  "progress": 100,
+  "inputSize": 116075,
+  "createdAt": 1792758302187,
+  "options": {
+    "videoPreset": "veryfast",
+    "videoQuality": "balanced"
+  },
+  "outputPath": "/app/applet/temp_outputs/converted-1wuyfs.mp4",
+  "duration": 4.003,
+  "speed": "14.5x",
+  "outputSize": 44764
+}
